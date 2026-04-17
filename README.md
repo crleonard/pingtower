@@ -1,5 +1,8 @@
 # pingtower
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/crleonard/pingtower.svg)](https://pkg.go.dev/github.com/crleonard/pingtower)
+[![Go Report Card](https://goreportcard.com/badge/github.com/crleonard/pingtower)](https://goreportcard.com/report/github.com/crleonard/pingtower)
+
 `pingtower` is a lightweight self-hosted uptime monitor for websites and APIs. It runs as a small Go service, ships with a built-in web dashboard, and stores monitor state locally so you can get started quickly without extra infrastructure.
 
 ## Why Pingtower?
