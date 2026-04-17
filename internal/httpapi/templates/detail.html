@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Check.Name}} · pingtower</title>
+  <meta http-equiv="refresh" content="10;url={{.RefreshURL}}">
+  <style>
+    :root {
+      --bg: #f6f4ed;
+      --panel: rgba(255, 252, 245, 0.9);
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: rgba(31, 41, 55, 0.12);
+      --accent: #0f766e;
+      --accent-soft: rgba(15, 118, 110, 0.12);
+      --danger: #b91c1c;
+      --danger-soft: rgba(185, 28, 28, 0.12);
+      --pending: #9a6700;
+      --pending-soft: rgba(154, 103, 0, 0.12);
+      --shadow: 0 22px 50px rgba(30, 41, 59, 0.12);
+      --radius: 24px;
+      --font-display: "Avenir Next", "Segoe UI", sans-serif;
+      --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 26%),
+        linear-gradient(180deg, #fbfaf5 0%, var(--bg) 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .page {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 26px;
+      margin-bottom: 22px;
+    }
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+    .back {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    h1, h2 {
+      margin: 0;
+      font-family: var(--font-display);
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .muted {
+      color: var(--muted);
+      line-height: 1.6;
+      word-break: break-all;
+    }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .fact {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.68);
+      border: 1px solid var(--line);
+    }
+    .fact strong {
+      display: block;
+      font-size: 1.2rem;
+      margin-top: 8px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-healthy {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .status-down {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+    .status-pending {
+      background: var(--pending-soft);
+      color: var(--pending);
+    }
+    .status-paused {
+      background: rgba(71, 85, 105, 0.14);
+      color: #475569;
+    }
+    .history {
+      padding: 24px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .actions form {
+      margin: 0;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #475569 0%, #334155 100%);
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 16px;
+      cursor: pointer;
+    }
+    .button-danger {
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    }
+    .history-list {
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+    }
+    .row-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .row-meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    pre {
+      margin: 12px 0 0;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.92);
+      color: #e5e7eb;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", "Menlo", monospace;
+      font-size: 0.84rem;
+    }
+    @media (max-width: 860px) {
+      .facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 620px) {
+      .topline, .row-top, .facts {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel hero">
+      <div class="topline">
+        <div>
+          <a class="back" href="/">← Back to dashboard</a>
+          <h1>{{.Check.Name}}</h1>
+          <div class="muted">{{.Check.URL}}</div>
+        </div>
+        <span class="status-pill {{.Check.StatusClass}}">{{formatStatus .Check.LastStatus}}</span>
+      </div>
+      <div class="facts">
+        <div class="fact">
+          <span>Expected code</span>
+          <strong>{{.Check.ExpectedStatusCode}}</strong>
+        </div>
+        <div class="fact">
+          <span>Interval</span>
+          <strong>{{.Check.IntervalSeconds}}s</strong>
+        </div>
+        <div class="fact">
+          <span>Timeout</span>
+          <strong>{{.Check.TimeoutSeconds}}s</strong>
+        </div>
+        <div class="fact">
+          <span>Last checked</span>
+          <strong>{{.Check.LastCheckedLabel}}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel history">
+      <div class="topline">
+        <div>
+          <h2>Recent history</h2>
+          <div class="row-meta">Server time: {{.CurrentTime}} • Refreshes every 10 seconds</div>
+        </div>
+        <div class="actions">
+          {{if .Check.Paused}}
+          <form method="post" action="/dashboard/checks/{{.Check.ID}}/resume">
+            <input type="hidden" name="redirect_to" value="/checks/{{.Check.ID}}/view">
+            <button type="submit">Resume polling</button>
+          </form>
+          {{else}}
+          <form method="post" action="/dashboard/checks/{{.Check.ID}}/pause">
+            <input type="hidden" name="redirect_to" value="/checks/{{.Check.ID}}/view">
+            <button type="submit">Pause polling</button>
+          </form>
+          {{end}}
+          <form method="post" action="/dashboard/checks/{{.Check.ID}}/delete" onsubmit="return window.confirm('Remove this monitor and its history?');">
+            <input type="hidden" name="redirect_to" value="/">
+            <button class="button-danger" type="submit">Remove monitor</button>
+          </form>
+        </div>
+      </div>
+      {{if .Results}}
+      <div class="history-list">
+        {{range .Results}}
+        <article class="row">
+          <div class="row-top">
+            <span class="status-pill {{.StatusClass}}">{{formatStatus .Status}}</span>
+            <div class="row-meta">{{.CheckedAtLabel}}</div>
+          </div>
+          <div class="row-meta">HTTP {{.StatusCode}} • {{.ResponseMS}} ms</div>
+          {{if .ErrorMessage}}
+          <div class="row-meta">Error: {{.ErrorMessage}}</div>
+          {{end}}
+          {{if .ResponseSample}}
+          <pre>{{.ResponseSample}}</pre>
+          {{end}}
+        </article>
+        {{end}}
+      </div>
+      {{else}}
+      <div class="row-meta">No results yet. The first poll should appear shortly.</div>
+      {{end}}
+    </section>
+  </div>
+</body>
+</html>

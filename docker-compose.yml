@@ -1,0 +1,12 @@
+services:
+  pingtower:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      PINGTOWER_ADDR: ":8080"
+      PINGTOWER_DATA_FILE: "/data/pingtower.json"
+      PINGTOWER_DEFAULT_INTERVAL: "60s"
+      PINGTOWER_DEFAULT_TIMEOUT: "10s"
+    volumes:
+      - ./data:/data

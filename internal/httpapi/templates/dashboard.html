@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pingtower</title>
+  <style>
+    :root {
+      --bg: #f3efe4;
+      --panel: rgba(255, 252, 245, 0.88);
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: rgba(31, 41, 55, 0.12);
+      --accent: #0f766e;
+      --accent-soft: rgba(15, 118, 110, 0.12);
+      --danger: #b91c1c;
+      --danger-soft: rgba(185, 28, 28, 0.12);
+      --pending: #9a6700;
+      --pending-soft: rgba(154, 103, 0, 0.12);
+      --shadow: 0 22px 50px rgba(30, 41, 59, 0.12);
+      --radius: 24px;
+      --font-display: "Avenir Next", "Segoe UI", sans-serif;
+      --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 30%),
+        radial-gradient(circle at top right, rgba(217, 119, 6, 0.12), transparent 28%),
+        linear-gradient(180deg, #fbf8f1 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .intro {
+      padding: 28px;
+    }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      font-family: var(--font-display);
+    }
+    h1 {
+      font-size: clamp(2.1rem, 4vw, 3.6rem);
+      line-height: 0.96;
+      margin-bottom: 12px;
+    }
+    .intro p {
+      max-width: 58ch;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding: 22px;
+      align-content: start;
+    }
+    .stat-card {
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.66);
+    }
+    .stat-card strong {
+      display: block;
+      font-size: 1.7rem;
+      margin-top: 8px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+    }
+    .monitors, .form-panel {
+      padding: 24px;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .section-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+    .monitor-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .monitor-card {
+      display: block;
+      padding: 18px;
+      border-radius: 18px;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .monitor-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(15, 118, 110, 0.32);
+      box-shadow: 0 12px 24px rgba(15, 118, 110, 0.12);
+    }
+    .monitor-top, .monitor-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .monitor-top {
+      align-items: start;
+      margin-bottom: 14px;
+    }
+    .monitor-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .monitor-url {
+      font-size: 0.92rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .monitor-meta {
+      margin-top: 10px;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-healthy {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .status-down {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+    .status-pending {
+      background: var(--pending-soft);
+      color: var(--pending);
+    }
+    .status-paused {
+      background: rgba(71, 85, 105, 0.14);
+      color: #475569;
+    }
+    .empty {
+      padding: 28px;
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: 18px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.5);
+    }
+    form {
+      display: grid;
+      gap: 14px;
+    }
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+    input {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.86);
+      color: var(--ink);
+      font: inherit;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .error {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 0.94rem;
+      border: 1px solid rgba(185, 28, 28, 0.16);
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #0f766e 0%, #155e75 100%);
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      padding: 14px 18px;
+      cursor: pointer;
+    }
+    .subtle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    @media (max-width: 920px) {
+      .hero, .layout, .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="panel intro">
+        <span class="eyebrow">Self-hosted uptime</span>
+        <h1>See your services at a glance.</h1>
+        <p>pingtower keeps an eye on websites and APIs, records their recent health checks, and gives you one place to spot what is healthy, failing, or still waiting on a first run.</p>
+      </div>
+      <aside class="panel stats">
+        <div class="stat-card">
+          <span>Total monitors</span>
+          <strong>{{.Stats.Total}}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Healthy</span>
+          <strong>{{.Stats.Healthy}}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Down</span>
+          <strong>{{.Stats.Down}}</strong>
+        </div>
+        <div class="stat-card">
+          <span>Pending</span>
+          <strong>{{.Stats.Pending}}</strong>
+        </div>
+      </aside>
+    </section>
+
+    <section class="layout">
+      <div class="panel monitors">
+        <div class="section-head">
+          <div>
+            <h2>Monitors</h2>
+            <p>Click a monitor to inspect its recent history.</p>
+          </div>
+        </div>
+        {{if .Checks}}
+        <div class="monitor-grid">
+          {{range .Checks}}
+          <a class="monitor-card" href="/checks/{{.ID}}/view">
+            <div class="monitor-top">
+              <div>
+                <div class="monitor-name">{{.Name}}</div>
+                <div class="monitor-url">{{.URL}}</div>
+              </div>
+              <span class="status-pill {{.StatusClass}}">{{formatStatus .LastStatus}}</span>
+            </div>
+            <div class="monitor-bottom">
+              <div class="monitor-meta">
+                Expected {{.ExpectedStatusCode}} • Every {{.IntervalSeconds}}s • Timeout {{.TimeoutSeconds}}s
+              </div>
+              <div class="monitor-meta">
+                {{.LastCheckedLabel}}
+              </div>
+            </div>
+            {{if .LastError}}
+            <div class="monitor-meta">Error: {{.LastError}}</div>
+            {{else if .LastStatusCode}}
+            <div class="monitor-meta">Status {{.LastStatusCode}} • {{.LastResponseMS}} ms</div>
+            {{end}}
+          </a>
+          {{end}}
+        </div>
+        {{else}}
+        <div class="empty">
+          No monitors yet. Add your first endpoint and the dashboard will start filling in after the first poll.
+        </div>
+        {{end}}
+      </div>
+
+      <aside class="panel form-panel">
+        <div class="section-head">
+          <div>
+            <h2>Add a monitor</h2>
+            <p>Use a health endpoint, API URL, or any page that should return a predictable status code.</p>
+          </div>
+        </div>
+        {{if .FormError}}
+        <div class="error">{{.FormError}}</div>
+        {{end}}
+        <form id="create-monitor-form" method="post" action="/dashboard/checks">
+          <label>
+            Name
+            <input name="name" placeholder="Production API" value="{{index .FormValues "name"}}">
+          </label>
+          <label>
+            URL
+            <input name="url" placeholder="https://example.com/health" value="{{index .FormValues "url"}}">
+          </label>
+          <div class="form-grid">
+            <label>
+              Interval (seconds)
+              <input name="interval_seconds" value="{{index .FormValues "interval_seconds"}}">
+            </label>
+            <label>
+              Timeout (seconds)
+              <input name="timeout_seconds" value="{{index .FormValues "timeout_seconds"}}">
+            </label>
+            <label>
+              Expected code
+              <input name="expected_status_code" value="{{index .FormValues "expected_status_code"}}">
+            </label>
+          </div>
+          <button type="submit">Create monitor</button>
+        </form>
+        <p class="subtle" id="refresh-status">Current server time: {{.CurrentTime}}. This page refreshes every 10 seconds unless you are editing the form. API endpoints are still available if you want to automate monitor creation or consume raw history.</p>
+      </aside>
+    </section>
+
+    <footer>Dashboard powered by the same built-in monitor API.</footer>
+  </div>
+  <script>
+    (function () {
+      const refreshURL = {{printf "%q" .RefreshURL}};
+      const refreshIntervalMs = 10000;
+      const form = document.getElementById("create-monitor-form");
+      const refreshStatus = document.getElementById("refresh-status");
+      let refreshTimer = null;
+      let formDirty = false;
+
+      function updateStatus() {
+        if (!refreshStatus) {
+          return;
+        }
+
+        if (document.activeElement && form && form.contains(document.activeElement)) {
+          refreshStatus.textContent = "Current server time: {{.CurrentTime}}. Auto-refresh is paused while you are editing the form.";
+          return;
+        }
+
+        if (formDirty) {
+          refreshStatus.textContent = "Current server time: {{.CurrentTime}}. Auto-refresh is paused until you submit or clear the form.";
+          return;
+        }
+
+        refreshStatus.textContent = "Current server time: {{.CurrentTime}}. This page refreshes every 10 seconds unless you are editing the form. API endpoints are still available if you want to automate monitor creation or consume raw history.";
+      }
+
+      function scheduleRefresh() {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(function () {
+          if (document.activeElement && form && form.contains(document.activeElement)) {
+            scheduleRefresh();
+            updateStatus();
+            return;
+          }
+
+          if (formDirty) {
+            scheduleRefresh();
+            updateStatus();
+            return;
+          }
+
+          window.location.href = refreshURL;
+        }, refreshIntervalMs);
+      }
+
+      function syncDirtyState() {
+        if (!form) {
+          return;
+        }
+
+        const fields = Array.from(form.querySelectorAll("input"));
+        formDirty = fields.some(function (field) {
+          return field.value.trim() !== "";
+        });
+        updateStatus();
+      }
+
+      if (form) {
+        form.addEventListener("input", function () {
+          syncDirtyState();
+          scheduleRefresh();
+        });
+
+        form.addEventListener("focusin", function () {
+          updateStatus();
+          scheduleRefresh();
+        });
+
+        form.addEventListener("focusout", function () {
+          window.setTimeout(function () {
+            updateStatus();
+            scheduleRefresh();
+          }, 0);
+        });
+
+        form.addEventListener("submit", function () {
+          formDirty = false;
+        });
+      }
+
+      syncDirtyState();
+      updateStatus();
+      scheduleRefresh();
+    })();
+  </script>
+</body>
+</html>
