@@ -9,14 +9,26 @@ import (
 	"strings"
 
 	"github.com/crleonard/pingtower/internal/config"
+	"github.com/crleonard/pingtower/internal/model"
 	"github.com/crleonard/pingtower/internal/store"
 )
 
+// Triggerer runs an on-demand check evaluation.
+type Triggerer interface {
+	RunNow(checkID string) (model.Result, error)
+}
+
 type Server struct {
-	cfg    config.Config
-	logger *log.Logger
-	store  store.Store
-	mux    *http.ServeMux
+	cfg       config.Config
+	logger    *log.Logger
+	store     store.Store
+	triggerer Triggerer
+	mux       *http.ServeMux
+}
+
+// SetTriggerer wires the monitor service so the trigger endpoint works.
+func (s *Server) SetTriggerer(t Triggerer) {
+	s.triggerer = t
 }
 
 type createCheckRequest struct {
@@ -48,6 +60,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /dashboard/checks", s.handleCreateCheckForm)
 	s.mux.HandleFunc("POST /dashboard/checks/", s.handleDashboardCheckAction)
 	s.mux.HandleFunc("GET /checks/", s.handleCheckSubresource)
+	s.mux.HandleFunc("POST /checks/", s.handleCheckPOSTSubresource)
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 	s.mux.HandleFunc("GET /checks", s.handleListChecks)
 	s.mux.HandleFunc("POST /checks", s.handleCreateCheck)
@@ -185,6 +198,37 @@ func (s *Server) handleDeleteCheck(w http.ResponseWriter, _ *http.Request, check
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleCheckPOSTSubresource(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/checks/")
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) != 2 || parts[0] == "" {
+		http.NotFound(w, r)
+		return
+	}
+	if parts[1] == "trigger" {
+		s.handleTriggerCheck(w, r, parts[0])
+		return
+	}
+	http.NotFound(w, r)
+}
+
+func (s *Server) handleTriggerCheck(w http.ResponseWriter, _ *http.Request, checkID string) {
+	if s.triggerer == nil {
+		writeError(w, http.StatusNotImplemented, "trigger not available")
+		return
+	}
+	result, err := s.triggerer.RunNow(checkID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "check not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to trigger check")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) loggingMiddleware(next http.Handler) http.Handler {

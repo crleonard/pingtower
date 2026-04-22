@@ -224,6 +224,10 @@
           <div class="row-meta">Server time: {{.CurrentTime}} • Refreshes every 10 seconds</div>
         </div>
         <div class="actions">
+          <form method="post" action="/dashboard/checks/{{.Check.ID}}/trigger">
+            <input type="hidden" name="redirect_to" value="/checks/{{.Check.ID}}/view">
+            <button type="submit">Check now</button>
+          </form>
           {{if .Check.Paused}}
           <form method="post" action="/dashboard/checks/{{.Check.ID}}/resume">
             <input type="hidden" name="redirect_to" value="/checks/{{.Check.ID}}/view">

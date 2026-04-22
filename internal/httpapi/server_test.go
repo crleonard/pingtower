@@ -201,3 +201,137 @@ func TestDeleteCheckViaDashboard(t *testing.T) {
 		t.Fatalf("GetCheck() error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestTriggerCheckAPI(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	created, err := dataStore.CreateCheck(model.Check{
+		Name:               "Trigger Test",
+		URL:                "https://example.com",
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: 200,
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+	server.SetTriggerer(&stubTriggerer{result: model.Result{
+		CheckID: created.ID,
+		Status:  "healthy",
+	}})
+
+	req := httptest.NewRequest(http.MethodPost, "/checks/"+created.ID+"/trigger", nil)
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("POST /checks/{id}/trigger status = %d, want %d", res.Code, http.StatusOK)
+	}
+
+	var result model.Result
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		t.Fatalf("decode result: %v", err)
+	}
+	if result.Status != "healthy" {
+		t.Fatalf("result.Status = %q, want %q", result.Status, "healthy")
+	}
+}
+
+func TestTriggerCheckAPI_NotFound(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+	server.SetTriggerer(&stubTriggerer{err: store.ErrNotFound})
+
+	req := httptest.NewRequest(http.MethodPost, "/checks/nonexistent/trigger", nil)
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusNotFound)
+	}
+}
+
+func TestTriggerCheckAPI_NoTriggerer(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+
+	req := httptest.NewRequest(http.MethodPost, "/checks/anything/trigger", nil)
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusNotImplemented)
+	}
+}
+
+func TestTriggerCheckDashboard(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	created, err := dataStore.CreateCheck(model.Check{
+		Name:               "Dashboard Trigger Test",
+		URL:                "https://example.com",
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: 200,
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+	server.SetTriggerer(&stubTriggerer{result: model.Result{
+		CheckID: created.ID,
+		Status:  "healthy",
+	}})
+
+	form := url.Values{"redirect_to": []string{"/checks/" + created.ID + "/view"}}
+	req := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/trigger", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusSeeOther {
+		t.Fatalf("dashboard trigger status = %d, want %d", res.Code, http.StatusSeeOther)
+	}
+	if loc := res.Header().Get("Location"); loc != "/checks/"+created.ID+"/view" {
+		t.Fatalf("Location = %q, want detail page", loc)
+	}
+}
+
+// stubTriggerer is a test double for the Triggerer interface.
+type stubTriggerer struct {
+	result model.Result
+	err    error
+}
+
+func (s *stubTriggerer) RunNow(_ string) (model.Result, error) {
+	return s.result, s.err
+}

@@ -32,6 +32,7 @@ func main() {
 	defer service.Stop()
 
 	server := httpapi.NewServer(cfg, logger, dataStore)
+	server.SetTriggerer(service)
 
 	httpServer := &http.Server{
 		Addr:              cfg.ListenAddr,
