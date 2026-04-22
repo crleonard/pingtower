@@ -78,7 +78,18 @@ func (s *Service) tick() {
 	}
 }
 
-func (s *Service) evaluate(check model.Check) {
+// RunNow immediately evaluates a check by ID and returns the result.
+// Returns an error only for store failures (e.g. store.ErrNotFound); a
+// network failure to the monitored URL is captured as a "down" Result.
+func (s *Service) RunNow(checkID string) (model.Result, error) {
+	check, err := s.store.GetCheck(checkID)
+	if err != nil {
+		return model.Result{}, err
+	}
+	return s.evaluate(check), nil
+}
+
+func (s *Service) evaluate(check model.Check) model.Result {
 	timeout := time.Duration(check.TimeoutSeconds) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -86,27 +97,29 @@ func (s *Service) evaluate(check model.Check) {
 	start := time.Now()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, check.URL, nil)
 	if err != nil {
-		s.persistResult(check, model.Result{
+		result := model.Result{
 			CheckID:      check.ID,
 			CheckedAt:    time.Now().UTC(),
 			Status:       "down",
 			ResponseMS:   time.Since(start).Milliseconds(),
 			ErrorMessage: err.Error(),
-		})
-		return
+		}
+		s.persistResult(check, result)
+		return result
 	}
 	req.Header.Set("User-Agent", s.userAgent)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		s.persistResult(check, model.Result{
+		result := model.Result{
 			CheckID:      check.ID,
 			CheckedAt:    time.Now().UTC(),
 			Status:       "down",
 			ResponseMS:   time.Since(start).Milliseconds(),
 			ErrorMessage: err.Error(),
-		})
-		return
+		}
+		s.persistResult(check, result)
+		return result
 	}
 	defer resp.Body.Close()
 
@@ -116,14 +129,16 @@ func (s *Service) evaluate(check model.Check) {
 		status = "down"
 	}
 
-	s.persistResult(check, model.Result{
+	result := model.Result{
 		CheckID:        check.ID,
 		CheckedAt:      time.Now().UTC(),
 		Status:         status,
 		StatusCode:     resp.StatusCode,
 		ResponseMS:     time.Since(start).Milliseconds(),
 		ResponseSample: strings.TrimSpace(string(body)),
-	})
+	}
+	s.persistResult(check, result)
+	return result
 }
 
 func (s *Service) persistResult(check model.Check, result model.Result) {

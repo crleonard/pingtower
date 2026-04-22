@@ -138,6 +138,25 @@ func (s *Server) handleDashboardCheckAction(w http.ResponseWriter, r *http.Reque
 
 	var paused bool
 	switch action {
+	case "trigger":
+		if s.triggerer == nil {
+			http.Error(w, "trigger not available", http.StatusNotImplemented)
+			return
+		}
+		if _, err := s.triggerer.RunNow(checkID); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, "failed to trigger check", http.StatusInternalServerError)
+			return
+		}
+		redirectTo := strings.TrimSpace(r.FormValue("redirect_to"))
+		if redirectTo == "" {
+			redirectTo = "/"
+		}
+		http.Redirect(w, r, redirectTo, http.StatusSeeOther)
+		return
 	case "pause":
 		paused = true
 	case "resume":

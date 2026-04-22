@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   unit-tests:
     name: Unit Tests
@@ -11,10 +14,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.5.0
         with:
           go-version-file: go.mod
           cache: true
