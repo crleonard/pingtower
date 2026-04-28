@@ -153,7 +153,6 @@ internal/store       file-backed persistence
 
 ## Roadmap
 
-- Add a manual "check now" action
 - Add webhook or email alerts
 - Support request headers and auth
 - Improve live dashboard updates without full page refresh
