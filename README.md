@@ -5,6 +5,8 @@
 
 `pingtower` is a lightweight self-hosted uptime monitor for websites and APIs. It runs as a small Go service, ships with a built-in web dashboard, and stores monitor state locally so you can get started quickly without extra infrastructure.
 
+![Pingtower dashboard](docs/images/dashboard-readme.png)
+
 ## Why Pingtower?
 
 - Simple self-hosted monitoring for websites and APIs
@@ -33,6 +35,8 @@ Open [http://localhost:8080](http://localhost:8080) to:
 - pause, resume, or remove a monitor from its detail page
 
 The JSON API remains available for scripting and integrations.
+
+![Pingtower monitor detail](docs/images/check-detail-readme.png)
 
 ## Installation
 
