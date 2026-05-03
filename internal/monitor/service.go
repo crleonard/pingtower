@@ -1,7 +1,9 @@
 package monitor
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -156,4 +158,45 @@ func (s *Service) persistResult(check model.Check, result model.Result) {
 		result.StatusCode,
 		result.ResponseMS,
 	)
+
+	if check.WebhookURL != "" && check.LastStatus != "" && result.Status != check.LastStatus {
+		go s.fireWebhook(check, result)
+	}
+}
+
+func (s *Service) fireWebhook(check model.Check, result model.Result) {
+	payload, err := json.Marshal(map[string]any{
+		"check_id":        check.ID,
+		"name":            check.Name,
+		"url":             check.URL,
+		"status":          result.Status,
+		"previous_status": check.LastStatus,
+		"status_code":     result.StatusCode,
+		"response_ms":     result.ResponseMS,
+		"checked_at":      result.CheckedAt,
+	})
+	if err != nil {
+		s.logger.Printf("webhook marshal failed check_id=%s error=%v", check.ID, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, check.WebhookURL, bytes.NewReader(payload))
+	if err != nil {
+		s.logger.Printf("webhook request build failed check_id=%s error=%v", check.ID, err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", s.userAgent)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		s.logger.Printf("webhook delivery failed check_id=%s error=%v", check.ID, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	s.logger.Printf("webhook delivered check_id=%s status=%d", check.ID, resp.StatusCode)
 }
