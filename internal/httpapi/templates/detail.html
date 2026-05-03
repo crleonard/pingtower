@@ -267,6 +267,28 @@
       <div class="row-meta">No results yet. The first poll should appear shortly.</div>
       {{end}}
     </section>
+
+    <section class="panel history" style="margin-top:22px;">
+      <div class="topline" style="margin-bottom:0;">
+        <div>
+          <h2>Webhook alert</h2>
+          <div class="row-meta">Fires a POST request when this monitor changes status (up ↔ down).</div>
+        </div>
+      </div>
+      <form method="post" action="/dashboard/checks/{{.Check.ID}}/webhook" style="margin-top:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input
+          type="url"
+          name="webhook_url"
+          value="{{.Check.WebhookURL}}"
+          placeholder="https://hooks.slack.com/services/…"
+          style="flex:1;min-width:260px;padding:11px 14px;border-radius:999px;border:1px solid var(--line);font:inherit;background:rgba(255,255,255,0.8);"
+        >
+        <button type="submit">{{if .Check.WebhookURL}}Update{{else}}Save{{end}}</button>
+        {{if .Check.WebhookURL}}
+        <button type="submit" name="webhook_url" value="" class="button-danger" onclick="this.form.querySelector('[name=webhook_url]').value=''">Remove</button>
+        {{end}}
+      </form>
+    </section>
   </div>
 </body>
 </html>

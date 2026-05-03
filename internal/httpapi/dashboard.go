@@ -32,6 +32,7 @@ type dashboardCheckView struct {
 	IntervalSeconds    int
 	TimeoutSeconds     int
 	Paused             bool
+	WebhookURL         string
 	LastStatus         string
 	LastStatusCode     int
 	LastResponseMS     int64
@@ -138,6 +139,18 @@ func (s *Server) handleDashboardCheckAction(w http.ResponseWriter, r *http.Reque
 
 	var paused bool
 	switch action {
+	case "webhook":
+		webhookURL := strings.TrimSpace(r.FormValue("webhook_url"))
+		if _, err := s.store.SetCheckWebhook(checkID, webhookURL); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, "failed to update webhook", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, fmt.Sprintf("/checks/%s/view", checkID), http.StatusSeeOther)
+		return
 	case "trigger":
 		if s.triggerer == nil {
 			http.Error(w, "trigger not available", http.StatusNotImplemented)
@@ -289,6 +302,7 @@ func newDashboardCheckView(check model.Check) dashboardCheckView {
 		IntervalSeconds:    check.IntervalSeconds,
 		TimeoutSeconds:     check.TimeoutSeconds,
 		Paused:             check.Paused,
+		WebhookURL:         check.WebhookURL,
 		LastStatus:         effectiveStatus(check),
 		LastStatusCode:     check.LastStatusCode,
 		LastResponseMS:     check.LastResponseMS,
