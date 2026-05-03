@@ -23,6 +23,7 @@ type Store interface {
 	ListResults(id string) ([]model.Result, error)
 	UpdateCheckStatus(id string, result model.Result, maxHistory int) error
 	SetCheckPaused(id string, paused bool) (model.Check, error)
+	SetCheckWebhook(id string, webhookURL string) (model.Check, error)
 	DeleteCheck(id string) error
 }
 
@@ -150,6 +151,25 @@ func (fs *FileStore) SetCheckPaused(id string, paused bool) (model.Check, error)
 		return model.Check{}, err
 	}
 
+	return check, nil
+}
+
+func (fs *FileStore) SetCheckWebhook(id string, webhookURL string) (model.Check, error) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	check, ok := fs.checks[id]
+	if !ok {
+		return model.Check{}, ErrNotFound
+	}
+
+	check.WebhookURL = webhookURL
+	check.UpdatedAt = time.Now().UTC()
+	fs.checks[id] = check
+
+	if err := fs.saveLocked(); err != nil {
+		return model.Check{}, err
+	}
 	return check, nil
 }
 

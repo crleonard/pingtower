@@ -10,6 +10,7 @@ type Check struct {
 	TimeoutSeconds     int       `json:"timeout_seconds"`
 	ExpectedStatusCode int       `json:"expected_status_code"`
 	Paused             bool      `json:"paused"`
+	WebhookURL         string    `json:"webhook_url,omitempty"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 	LastCheckedAt      time.Time `json:"last_checked_at,omitempty"`
