@@ -335,3 +335,62 @@ type stubTriggerer struct {
 func (s *stubTriggerer) RunNow(_ string) (model.Result, error) {
 	return s.result, s.err
 }
+
+func TestSetWebhookViaDashboard(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	created, err := dataStore.CreateCheck(model.Check{
+		Name:               "Webhook Form Test",
+		URL:                "https://example.com",
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: 200,
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+
+	form := url.Values{"webhook_url": []string{"https://hooks.example.com/notify"}}
+	req := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/webhook", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusSeeOther {
+		t.Fatalf("set webhook status = %d, want %d", res.Code, http.StatusSeeOther)
+	}
+
+	check, err := dataStore.GetCheck(created.ID)
+	if err != nil {
+		t.Fatalf("GetCheck() error = %v", err)
+	}
+	if check.WebhookURL != "https://hooks.example.com/notify" {
+		t.Fatalf("WebhookURL = %q, want set value", check.WebhookURL)
+	}
+
+	clearForm := url.Values{"webhook_url": []string{""}}
+	clearReq := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/webhook", bytes.NewBufferString(clearForm.Encode()))
+	clearReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	clearRes := httptest.NewRecorder()
+	server.Handler().ServeHTTP(clearRes, clearReq)
+
+	if clearRes.Code != http.StatusSeeOther {
+		t.Fatalf("clear webhook status = %d, want %d", clearRes.Code, http.StatusSeeOther)
+	}
+
+	check, err = dataStore.GetCheck(created.ID)
+	if err != nil {
+		t.Fatalf("GetCheck() error = %v", err)
+	}
+	if check.WebhookURL != "" {
+		t.Fatalf("WebhookURL = %q after clear, want empty", check.WebhookURL)
+	}
+}
