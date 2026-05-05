@@ -24,6 +24,8 @@ type Store interface {
 	UpdateCheckStatus(id string, result model.Result, maxHistory int) error
 	SetCheckPaused(id string, paused bool) (model.Check, error)
 	SetCheckWebhook(id string, webhookURL string) (model.Check, error)
+	SetCheckHeaders(id string, headers map[string]string) (model.Check, error)
+	SetCheckAuth(id string, authType string, authValue string) (model.Check, error)
 	DeleteCheck(id string) error
 }
 
@@ -164,6 +166,58 @@ func (fs *FileStore) SetCheckWebhook(id string, webhookURL string) (model.Check,
 	}
 
 	check.WebhookURL = webhookURL
+	check.UpdatedAt = time.Now().UTC()
+	fs.checks[id] = check
+
+	if err := fs.saveLocked(); err != nil {
+		return model.Check{}, err
+	}
+	return check, nil
+}
+
+func (fs *FileStore) SetCheckHeaders(id string, headers map[string]string) (model.Check, error) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	check, ok := fs.checks[id]
+	if !ok {
+		return model.Check{}, ErrNotFound
+	}
+
+	if len(headers) == 0 {
+		check.Headers = nil
+	} else {
+		copied := make(map[string]string, len(headers))
+		for k, v := range headers {
+			copied[k] = v
+		}
+		check.Headers = copied
+	}
+	check.UpdatedAt = time.Now().UTC()
+	fs.checks[id] = check
+
+	if err := fs.saveLocked(); err != nil {
+		return model.Check{}, err
+	}
+	return check, nil
+}
+
+func (fs *FileStore) SetCheckAuth(id string, authType string, authValue string) (model.Check, error) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	check, ok := fs.checks[id]
+	if !ok {
+		return model.Check{}, ErrNotFound
+	}
+
+	if authType == "" || authType == "none" {
+		check.AuthType = ""
+		check.AuthValue = ""
+	} else {
+		check.AuthType = authType
+		check.AuthValue = authValue
+	}
 	check.UpdatedAt = time.Now().UTC()
 	fs.checks[id] = check
 
