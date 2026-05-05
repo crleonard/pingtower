@@ -289,6 +289,57 @@
         {{end}}
       </form>
     </section>
+
+    <section class="panel history" style="margin-top:22px;">
+      <div class="topline" style="margin-bottom:0;">
+        <div>
+          <h2>Request headers</h2>
+          <div class="row-meta">Custom headers sent with each poll. One <code>Key: Value</code> per line.</div>
+        </div>
+      </div>
+      <form method="post" action="/dashboard/checks/{{.Check.ID}}/headers" style="margin-top:20px;display:flex;flex-direction:column;gap:10px;">
+        <textarea
+          name="headers"
+          rows="4"
+          placeholder="X-API-Key: abc123&#10;Accept: application/json"
+          style="padding:12px 14px;border-radius:18px;border:1px solid var(--line);font:inherit;background:rgba(255,255,255,0.8);resize:vertical;"
+        >{{.Check.HeadersText}}</textarea>
+        <div style="display:flex;gap:10px;">
+          <button type="submit">Save headers</button>
+          {{if .Check.Headers}}
+          <button type="submit" class="button-danger" onclick="this.form.querySelector('[name=headers]').value=''">Clear all</button>
+          {{end}}
+        </div>
+      </form>
+    </section>
+
+    <section class="panel history" style="margin-top:22px;">
+      <div class="topline" style="margin-bottom:0;">
+        <div>
+          <h2>Outbound auth</h2>
+          <div class="row-meta">Adds an <code>Authorization</code> header to each poll. Stored in the data file — keep it readable only by trusted users.</div>
+        </div>
+      </div>
+      <form method="post" action="/dashboard/checks/{{.Check.ID}}/auth" style="margin-top:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <select name="auth_type" style="padding:11px 14px;border-radius:999px;border:1px solid var(--line);font:inherit;background:rgba(255,255,255,0.8);">
+          <option value="none" {{if not .Check.AuthType}}selected{{end}}>None</option>
+          <option value="basic" {{if eq .Check.AuthType "basic"}}selected{{end}}>Basic (user:pass)</option>
+          <option value="bearer" {{if eq .Check.AuthType "bearer"}}selected{{end}}>Bearer token</option>
+        </select>
+        <input
+          type="password"
+          name="auth_value"
+          value=""
+          placeholder="{{if .Check.HasAuth}}(value set — type to replace){{else}}value{{end}}"
+          autocomplete="off"
+          style="flex:1;min-width:240px;padding:11px 14px;border-radius:999px;border:1px solid var(--line);font:inherit;background:rgba(255,255,255,0.8);"
+        >
+        <button type="submit">Save</button>
+        {{if .Check.HasAuth}}
+        <button type="submit" name="auth_type" value="none" class="button-danger">Remove</button>
+        {{end}}
+      </form>
+    </section>
   </div>
 </body>
 </html>
