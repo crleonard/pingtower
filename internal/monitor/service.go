@@ -3,6 +3,7 @@ package monitor
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log"
@@ -110,6 +111,13 @@ func (s *Service) evaluate(check model.Check) model.Result {
 		return result
 	}
 	req.Header.Set("User-Agent", s.userAgent)
+	applyAuth(req, check)
+	for key, value := range check.Headers {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		req.Header.Set(key, value)
+	}
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -199,4 +207,16 @@ func (s *Service) fireWebhook(check model.Check, result model.Result) {
 	defer resp.Body.Close()
 
 	s.logger.Printf("webhook delivered check_id=%s status=%d", check.ID, resp.StatusCode)
+}
+
+func applyAuth(req *http.Request, check model.Check) {
+	if check.AuthValue == "" {
+		return
+	}
+	switch check.AuthType {
+	case "bearer":
+		req.Header.Set("Authorization", "Bearer "+check.AuthValue)
+	case "basic":
+		req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(check.AuthValue)))
+	}
 }
