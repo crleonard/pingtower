@@ -18,6 +18,12 @@ func (s *Server) validateCreateCheck(req createCheckRequest) error {
 		return fmt.Errorf("url must be a valid absolute URL")
 	}
 
+	switch req.AuthType {
+	case "", "none", "basic", "bearer":
+	default:
+		return fmt.Errorf("auth_type must be one of: none, basic, bearer")
+	}
+
 	return nil
 }
 
@@ -36,11 +42,21 @@ func (s *Server) buildCheck(req createCheckRequest) (model.Check, error) {
 		req.ExpectedStatusCode = http.StatusOK
 	}
 
+	authType := req.AuthType
+	authValue := req.AuthValue
+	if authType == "" || authType == "none" {
+		authType = ""
+		authValue = ""
+	}
+
 	return model.Check{
 		Name:               strings.TrimSpace(req.Name),
 		URL:                req.URL,
 		IntervalSeconds:    req.IntervalSeconds,
 		TimeoutSeconds:     req.TimeoutSeconds,
 		ExpectedStatusCode: req.ExpectedStatusCode,
+		Headers:            req.Headers,
+		AuthType:           authType,
+		AuthValue:          authValue,
 	}, nil
 }
