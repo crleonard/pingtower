@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0]
+
+### Added
+- Custom request headers per monitor. Set them as `Key: Value` lines from
+  the monitor detail page, or via the JSON API on create.
+- Outbound auth per monitor. Choose Basic (`user:pass`) or Bearer; pingtower
+  attaches the matching `Authorization` header on every poll.
+- Dashboard routes `POST /dashboard/checks/{id}/headers` and
+  `POST /dashboard/checks/{id}/auth` for managing headers and auth.
+- New `headers`, `auth_type`, and `auth_value` fields on the check model and
+  on `POST /checks`.
+- New `SetCheckHeaders` and `SetCheckAuth` store methods.
+
+### Notes
+- Auth values are stored in the data file as plain text. Restrict
+  permissions on `data/pingtower.json` to trusted users.
+- The dashboard reflects the masked state of an existing auth value rather
+  than the secret itself. Submitting the auth form with the value field
+  blank preserves the existing secret.
+- Unlocks monitoring of authenticated APIs that were previously impossible
+  to check (anything behind an API key, OAuth bearer, or HTTP Basic).
+
 ## [1.2.0]
 
 ### Added

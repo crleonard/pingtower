@@ -23,6 +23,8 @@
 - Pause and resume polling per monitor
 - Remove monitors you no longer need
 - Configure expected status code and timeout
+- Send custom request headers and Basic / Bearer auth on each poll
+- Webhook alerts on status transitions
 - Run locally with Go or in Docker
 
 ## Dashboard
@@ -101,6 +103,26 @@ curl -X POST http://localhost:8080/checks \
   }'
 ```
 
+### Create a monitor with custom headers and a Bearer token
+
+```bash
+curl -X POST http://localhost:8080/checks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Authenticated API",
+    "url": "https://api.example.com/me",
+    "headers": {
+      "X-API-Key": "abc123",
+      "Accept": "application/json"
+    },
+    "auth_type": "bearer",
+    "auth_value": "my-secret-token"
+  }'
+```
+
+`auth_type` accepts `none`, `basic`, or `bearer`. For `basic`, `auth_value` is
+the literal `user:pass` string (pingtower base64-encodes it on each request).
+
 ### List monitors
 
 ```bash
@@ -157,10 +179,17 @@ internal/store       file-backed persistence
 
 ## Roadmap
 
-- Add webhook or email alerts
-- Support request headers and auth
 - Improve live dashboard updates without full page refresh
 - Move persistence to SQLite or Postgres
+- Dashboard authentication
+
+## Security note
+
+Custom auth values (Basic credentials and Bearer tokens) are stored in the
+data file in plain text. Restrict file permissions on `data/pingtower.json`
+to trusted users, and consider running pingtower behind a reverse proxy or
+on a private network rather than exposing the dashboard publicly — there is
+no authentication on the dashboard yet.
 
 ## License
 
