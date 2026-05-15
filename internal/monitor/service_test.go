@@ -103,3 +103,84 @@ func TestRunNow_NotFound(t *testing.T) {
 		t.Fatal("RunNow() expected error for unknown ID, got nil")
 	}
 }
+
+func TestRunNow_AppliesHeadersAndAuth(t *testing.T) {
+	t.Parallel()
+
+	var gotAuth, gotAPIKey, gotAccept string
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotAPIKey = r.Header.Get("X-API-Key")
+		gotAccept = r.Header.Get("Accept")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer target.Close()
+
+	svc, dataStore := newTestService(t)
+
+	check, err := dataStore.CreateCheck(model.Check{
+		Name:               "Auth headers",
+		URL:                target.URL,
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: http.StatusOK,
+		AuthType:           "bearer",
+		AuthValue:          "test-token",
+		Headers: map[string]string{
+			"X-API-Key": "abc123",
+			"Accept":    "application/json",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	if _, err := svc.RunNow(check.ID); err != nil {
+		t.Fatalf("RunNow() error = %v", err)
+	}
+
+	if gotAuth != "Bearer test-token" {
+		t.Fatalf("Authorization header = %q, want %q", gotAuth, "Bearer test-token")
+	}
+	if gotAPIKey != "abc123" {
+		t.Fatalf("X-API-Key header = %q, want %q", gotAPIKey, "abc123")
+	}
+	if gotAccept != "application/json" {
+		t.Fatalf("Accept header = %q, want %q", gotAccept, "application/json")
+	}
+}
+
+func TestRunNow_BasicAuthEncoded(t *testing.T) {
+	t.Parallel()
+
+	var gotAuth string
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer target.Close()
+
+	svc, dataStore := newTestService(t)
+
+	check, err := dataStore.CreateCheck(model.Check{
+		Name:               "Basic auth",
+		URL:                target.URL,
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: http.StatusOK,
+		AuthType:           "basic",
+		AuthValue:          "alice:hunter2",
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	if _, err := svc.RunNow(check.ID); err != nil {
+		t.Fatalf("RunNow() error = %v", err)
+	}
+
+	want := "Basic YWxpY2U6aHVudGVyMg=="
+	if gotAuth != want {
+		t.Fatalf("Authorization header = %q, want %q", gotAuth, want)
+	}
+}

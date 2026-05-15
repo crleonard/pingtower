@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,10 @@ type dashboardCheckView struct {
 	TimeoutSeconds     int
 	Paused             bool
 	WebhookURL         string
+	Headers            map[string]string
+	HeadersText        string
+	AuthType           string
+	HasAuth            bool
 	LastStatus         string
 	LastStatusCode     int
 	LastResponseMS     int64
@@ -147,6 +152,50 @@ func (s *Server) handleDashboardCheckAction(w http.ResponseWriter, r *http.Reque
 				return
 			}
 			http.Error(w, "failed to update webhook", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, fmt.Sprintf("/checks/%s/view", checkID), http.StatusSeeOther)
+		return
+	case "headers":
+		headers := parseHeadersText(r.FormValue("headers"))
+		if _, err := s.store.SetCheckHeaders(checkID, headers); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, "failed to update headers", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, fmt.Sprintf("/checks/%s/view", checkID), http.StatusSeeOther)
+		return
+	case "auth":
+		authType := strings.TrimSpace(r.FormValue("auth_type"))
+		authValue := r.FormValue("auth_value")
+		if authType != "" && authType != "none" && authType != "basic" && authType != "bearer" {
+			http.Error(w, "invalid auth_type", http.StatusBadRequest)
+			return
+		}
+		if authType == "none" || authType == "" {
+			authValue = ""
+		} else if strings.TrimSpace(authValue) == "" {
+			// keep the existing secret if the user didn't supply a new one
+			existing, err := s.store.GetCheck(checkID)
+			if err != nil {
+				if errors.Is(err, store.ErrNotFound) {
+					http.NotFound(w, r)
+					return
+				}
+				http.Error(w, "failed to load check", http.StatusInternalServerError)
+				return
+			}
+			authValue = existing.AuthValue
+		}
+		if _, err := s.store.SetCheckAuth(checkID, authType, authValue); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, "failed to update auth", http.StatusInternalServerError)
 			return
 		}
 		http.Redirect(w, r, fmt.Sprintf("/checks/%s/view", checkID), http.StatusSeeOther)
@@ -303,6 +352,10 @@ func newDashboardCheckView(check model.Check) dashboardCheckView {
 		TimeoutSeconds:     check.TimeoutSeconds,
 		Paused:             check.Paused,
 		WebhookURL:         check.WebhookURL,
+		Headers:            check.Headers,
+		HeadersText:        headersToText(check.Headers),
+		AuthType:           check.AuthType,
+		HasAuth:            check.AuthValue != "",
 		LastStatus:         effectiveStatus(check),
 		LastStatusCode:     check.LastStatusCode,
 		LastResponseMS:     check.LastResponseMS,
@@ -373,6 +426,51 @@ func withFormDefaults(values map[string]string, s *Server) map[string]string {
 		values["expected_status_code"] = strconv.Itoa(http.StatusOK)
 	}
 	return values
+}
+
+func parseHeadersText(text string) map[string]string {
+	headers := map[string]string{}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		idx := strings.Index(line, ":")
+		if idx <= 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:idx])
+		value := strings.TrimSpace(line[idx+1:])
+		if key == "" {
+			continue
+		}
+		headers[key] = value
+	}
+	if len(headers) == 0 {
+		return nil
+	}
+	return headers
+}
+
+func headersToText(headers map[string]string) string {
+	if len(headers) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(headers))
+	for k := range headers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(k)
+		b.WriteString(": ")
+		b.WriteString(headers[k])
+	}
+	return b.String()
 }
 
 func parseIntOrZero(value string) int {

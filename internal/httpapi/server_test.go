@@ -394,3 +394,127 @@ func TestSetWebhookViaDashboard(t *testing.T) {
 		t.Fatalf("WebhookURL = %q after clear, want empty", check.WebhookURL)
 	}
 }
+
+func TestSetHeadersViaDashboard(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	created, err := dataStore.CreateCheck(model.Check{
+		Name:               "Headers Form Test",
+		URL:                "https://example.com",
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: 200,
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+
+	form := url.Values{"headers": []string{"X-API-Key: abc123\nAccept: application/json"}}
+	req := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/headers", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusSeeOther {
+		t.Fatalf("set headers status = %d, want %d", res.Code, http.StatusSeeOther)
+	}
+
+	check, err := dataStore.GetCheck(created.ID)
+	if err != nil {
+		t.Fatalf("GetCheck() error = %v", err)
+	}
+	if check.Headers["X-API-Key"] != "abc123" || check.Headers["Accept"] != "application/json" {
+		t.Fatalf("Headers = %v, want both keys parsed", check.Headers)
+	}
+}
+
+func TestSetAuthViaDashboard(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	dataStore, err := store.NewFileStore(filepath.Join(dir, "pingtower.json"))
+	if err != nil {
+		t.Fatalf("NewFileStore() error = %v", err)
+	}
+
+	created, err := dataStore.CreateCheck(model.Check{
+		Name:               "Auth Form Test",
+		URL:                "https://example.com",
+		IntervalSeconds:    60,
+		TimeoutSeconds:     5,
+		ExpectedStatusCode: 200,
+	})
+	if err != nil {
+		t.Fatalf("CreateCheck() error = %v", err)
+	}
+
+	server := NewServer(config.Load(), log.New(io.Discard, "", 0), dataStore)
+
+	// set bearer token
+	form := url.Values{
+		"auth_type":  []string{"bearer"},
+		"auth_value": []string{"my-token"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/auth", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+
+	if res.Code != http.StatusSeeOther {
+		t.Fatalf("set auth status = %d, want %d", res.Code, http.StatusSeeOther)
+	}
+
+	check, err := dataStore.GetCheck(created.ID)
+	if err != nil {
+		t.Fatalf("GetCheck() error = %v", err)
+	}
+	if check.AuthType != "bearer" || check.AuthValue != "my-token" {
+		t.Fatalf("Auth = (%q, %q), want bearer/my-token", check.AuthType, check.AuthValue)
+	}
+
+	// submitting with auth_type set but no auth_value should preserve the existing value
+	keepForm := url.Values{
+		"auth_type":  []string{"bearer"},
+		"auth_value": []string{""},
+	}
+	keepReq := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/auth", bytes.NewBufferString(keepForm.Encode()))
+	keepReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	keepRes := httptest.NewRecorder()
+	server.Handler().ServeHTTP(keepRes, keepReq)
+
+	check, _ = dataStore.GetCheck(created.ID)
+	if check.AuthValue != "my-token" {
+		t.Fatalf("AuthValue after empty resubmit = %q, want preserved", check.AuthValue)
+	}
+
+	clearForm := url.Values{
+		"auth_type":  []string{"none"},
+		"auth_value": []string{""},
+	}
+	clearReq := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/auth", bytes.NewBufferString(clearForm.Encode()))
+	clearReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	clearRes := httptest.NewRecorder()
+	server.Handler().ServeHTTP(clearRes, clearReq)
+
+	check, _ = dataStore.GetCheck(created.ID)
+	if check.AuthType != "" || check.AuthValue != "" {
+		t.Fatalf("Auth after clear = (%q, %q), want empty", check.AuthType, check.AuthValue)
+	}
+
+	badForm := url.Values{"auth_type": []string{"hmac"}}
+	badReq := httptest.NewRequest(http.MethodPost, "/dashboard/checks/"+created.ID+"/auth", bytes.NewBufferString(badForm.Encode()))
+	badReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	badRes := httptest.NewRecorder()
+	server.Handler().ServeHTTP(badRes, badReq)
+	if badRes.Code != http.StatusBadRequest {
+		t.Fatalf("invalid auth_type status = %d, want %d", badRes.Code, http.StatusBadRequest)
+	}
+}

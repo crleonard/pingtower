@@ -32,11 +32,14 @@ func (s *Server) SetTriggerer(t Triggerer) {
 }
 
 type createCheckRequest struct {
-	Name               string `json:"name"`
-	URL                string `json:"url"`
-	IntervalSeconds    int    `json:"interval_seconds"`
-	TimeoutSeconds     int    `json:"timeout_seconds"`
-	ExpectedStatusCode int    `json:"expected_status_code"`
+	Name               string            `json:"name"`
+	URL                string            `json:"url"`
+	IntervalSeconds    int               `json:"interval_seconds"`
+	TimeoutSeconds     int               `json:"timeout_seconds"`
+	ExpectedStatusCode int               `json:"expected_status_code"`
+	Headers            map[string]string `json:"headers,omitempty"`
+	AuthType           string            `json:"auth_type,omitempty"`
+	AuthValue          string            `json:"auth_value,omitempty"`
 }
 
 func NewServer(cfg config.Config, logger *log.Logger, dataStore store.Store) *Server {
